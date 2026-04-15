@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Robotaxi Operations Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0c;--surface:#131318;--card:#1a1a22;--border:#2a2a35;
+  --accent:#e8364e;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--purple:#a855f7;
+  --text:#e4e4e8;--muted:#8888a0;--dim:#55556a;
+}
+body{background:var(--bg);color:var(--text);font-family:'SF Pro Display','Helvetica Neue',system-ui,sans-serif;padding:24px 28px;min-height:100vh}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent),#ff6b81);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:16px;color:#fff}
+.logo h1{font-size:18px;font-weight:700;letter-spacing:-0.3px}
+.logo p{font-size:11px;color:var(--muted);letter-spacing:0.5px}
+.indicators{display:flex;align-items:center;gap:16px}
+.live{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.live-dot{width:8px;height:8px;border-radius:50%;animation:pulse 2s infinite}
+.live-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green)}
+.live-dot.disconnected{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.tabs{display:flex;gap:4px;background:var(--surface);border-radius:10px;padding:4px;border:1px solid var(--border)}
+.tab{padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:transparent;color:var(--muted);transition:all .2s}
+.tab.active{background:var(--accent);color:#fff}
+
+.stats{display:flex;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+.stat{background:var(--card);border-radius:14px;padding:20px 22px;border:1px solid var(--border);flex:1;min-width:140px}
+.stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px}
+.stat-value{font-size:32px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.stat-sub{font-size:12px;color:var(--muted);margin-top:6px}
+
+.card{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:20px}
+.card-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:16px 20px 12px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:12px 16px;text-align:left;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;font-weight:600;border-bottom:1px solid var(--border)}
+td{padding:11px 16px;border-bottom:1px solid var(--border)}
+tr:hover{background:rgba(255,255,255,.04)}
+.mono{font-family:monospace;font-size:12px}
+
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;letter-spacing:.3px}
+.pill-dot{width:6px;height:6px;border-radius:50%}
+.pill-AVAILABLE,.pill-DONE{color:var(--green);background:rgba(34,197,94,.12)}
+.pill-AVAILABLE .pill-dot,.pill-DONE .pill-dot{background:var(--green)}
+.pill-EN_ROUTE,.pill-DISPATCHED{color:var(--blue);background:rgba(59,130,246,.12)}
+.pill-EN_ROUTE .pill-dot,.pill-DISPATCHED .pill-dot{background:var(--blue)}
+.pill-SEARCHING,.pill-IN_PROGRESS,.pill-MATCHING{color:var(--amber);background:rgba(245,158,11,.12)}
+.pill-SEARCHING .pill-dot,.pill-IN_PROGRESS .pill-dot,.pill-MATCHING .pill-dot{background:var(--amber)}
+.pill-CHARGING{color:var(--purple);background:rgba(168,85,247,.12)}
+.pill-CHARGING .pill-dot{background:var(--purple)}
+.pill-OFFLINE,.pill-CANCELLED{color:var(--dim);background:rgba(85,85,106,.12)}
+.pill-OFFLINE .pill-dot,.pill-CANCELLED .pill-dot{background:var(--dim)}
+.pill-FAILED{color:var(--accent);background:rgba(232,54,78,.12)}
+.pill-FAILED .pill-dot{background:var(--accent)}
+.pill-REQUESTED,.pill-DRIVER_ASSIGNED{color:var(--green);background:rgba(34,197,94,.12)}
+.pill-REQUESTED .pill-dot,.pill-DRIVER_ASSIGNED .pill-dot{background:var(--green)}
+
+.battery{display:flex;align-items:center;gap:8px}
+.battery-bar{width:48px;height:5px;border-radius:3px;background:var(--border);overflow:hidden}
+.battery-fill{height:100%;border-radius:3px}
+.battery-text{font-size:11px;color:var(--muted)}
+
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
+.filter-btn{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;font-weight:600;transition:all .2s}
+.filter-btn.active{border-color:var(--text);color:var(--text);background:rgba(228,228,232,.08)}
+.search{margin-left:auto;padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;outline:none;width:200px}
+
+.match-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;transition:background .3s}
+.match-row.flash{background:rgba(59,130,246,.08)}
+.match-candidates{display:flex;gap:3px}
+.match-cell{width:14px;height:14px;border-radius:4px;font-size:9px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:monospace;background:rgba(255,255,255,.03);color:var(--dim)}
+.match-cell.tried{background:rgba(255,255,255,.06);color:var(--dim)}
+.match-cell.current{border:1px solid var(--amber);background:rgba(245,158,11,.12);color:var(--amber)}
+.match-cell.accepted{border:1px solid var(--green);background:rgba(34,197,94,.12);color:var(--green)}
+
+.section{display:none}.section.active{display:block}
+.two-col{display:flex;gap:14px}
+.two-col>*{flex:1}
+
+/* Live feed */
+.feed{max-height:200px;overflow-y:auto;padding:12px 16px}
+.feed-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03);font-size:12px;animation:fadeIn .3s}
+.feed-time{color:var(--dim);font-family:monospace;font-size:11px;min-width:60px}
+.feed-type{font-weight:600;min-width:100px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">
+    <div class="logo-icon">T</div>
+    <div><h1>Robotaxi Operations</h1><p>Fleet management & matching monitor</p></div>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('fleet')">Fleet</button>
+    <button class="tab" onclick="switchTab('matching')">Matching</button>
+    <button class="tab" onclick="switchTab('live')">Live feed</button>
+  </div>
+  <div class="indicators">
+    <div class="live"><span class="live-dot" id="ws-dot"></span><span id="ws-label">Connecting...</span></div>
+  </div>
+</div>
+
+<div class="stats" id="stats-row"></div>
+
+<!-- Fleet -->
+<div class="section active" id="fleet-section">
+  <div class="filters" id="fleet-filters"></div>
+  <div class="card"><table><thead id="fleet-head"></thead><tbody id="fleet-body"></tbody></table></div>
+</div>
+
+<!-- Matching -->
+<div class="section" id="matching-section">
+  <div class="stats" id="match-stats"></div>
+  <div class="card">
+    <div class="card-title">Live matching pipeline — Redis state</div>
+    <div id="match-list" style="padding:12px 20px"></div>
+  </div>
+  <div class="two-col" style="margin-top:20px">
+    <div class="card" style="padding:18px 20px">
+      <div class="card-title" style="padding:0 0 10px">Recent rides</div>
+      <table><thead><tr><th>Ride</th><th>Status</th><th>AV</th><th>Time</th></tr></thead><tbody id="rides-body"></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- Live feed -->
+<div class="section" id="live-section">
+  <div class="card">
+    <div class="card-title">WebSocket event stream</div>
+    <div class="feed" id="live-feed">
+      <div style="color:var(--muted);text-align:center;padding:20px">Waiting for events...</div>
+    </div>
+  </div>
+  <div class="two-col" style="margin-top:20px">
+    <div class="card" style="padding:18px 20px">
+      <div class="card-title" style="padding:0 0 10px">Prometheus metrics</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        Full metrics at <a href="/metrics" style="color:var(--blue)" target="_blank">/metrics</a>
+      </div>
+      <div id="metrics-preview" style="font-family:monospace;font-size:12px;color:var(--text);line-height:1.8"></div>
+    </div>
+    <div class="card" style="padding:18px 20px">
+      <div class="card-title" style="padding:0 0 10px">Connection info</div>
+      <div id="conn-info" style="font-size:13px;line-height:2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = location.origin + '/api';
+const WS_URL = (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/ws';
+let currentTab = 'fleet';
+let currentFilter = 'ALL';
+let searchText = '';
+let data = { avs: [], stats: {}, matches: [], rides: [] };
+let feedItems = [];
+let wsConnected = false;
+let wsReconnects = 0;
+let socket = null;
+
+// --- WebSocket ---
+function connectWS() {
+  socket = new WebSocket(WS_URL);
+  socket.onopen = () => {
+    wsConnected = true;
+    wsReconnects = 0;
+    updateWSIndicator();
+    addFeedItem('system', 'WebSocket connected', 'var(--green)');
+  };
+  socket.onmessage = (e) => {
+    try {
+      const evt = JSON.parse(e.data);
+      handleWSEvent(evt);
+    } catch(err) {}
+  };
+  socket.onclose = () => {
+    wsConnected = false;
+    updateWSIndicator();
+    addFeedItem('system', 'WebSocket disconnected, reconnecting...', 'var(--accent)');
+    setTimeout(() => { wsReconnects++; connectWS(); }, Math.min(3000 * wsReconnects, 15000));
+  };
+  socket.onerror = () => { socket.close(); };
+}
+
+function handleWSEvent(evt) {
+  const p = evt.payload || {};
+  switch(evt.type) {
+    case 'ride_update':
+      addFeedItem('ride', `Ride ${(p.ride_id||'').slice(0,8)} → ${p.status}${p.av_id ? ' (AV: '+p.av_id+')' : ''}`, 'var(--blue)');
+      break;
+    case 'match_update':
+      const color = p.status === 'DONE' ? 'var(--green)' : p.status === 'FAILED' ? 'var(--accent)' : 'var(--amber)';
+      addFeedItem('match', `${(p.ride_id||'').slice(0,8)} ${p.status}${p.av_id ? ' → '+p.av_id : ''} [cursor:${p.cursor||0}]`, color);
+      break;
+    case 'av_update':
+      addFeedItem('av', `${p.av_id} → ${p.status}`, 'var(--purple)');
+      break;
+  }
+  // Trigger a data refresh on events
+  fetchData();
+}
+
+function updateWSIndicator() {
+  const dot = document.getElementById('ws-dot');
+  const label = document.getElementById('ws-label');
+  dot.className = 'live-dot ' + (wsConnected ? 'connected' : 'disconnected');
+  label.textContent = wsConnected ? 'Live' : 'Reconnecting...';
+}
+
+function addFeedItem(type, text, color) {
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', {hour12:false});
+  feedItems.unshift({ time, type, text, color });
+  if (feedItems.length > 50) feedItems.pop();
+  if (currentTab === 'live') renderLiveFeed();
+}
+
+// --- Tab switching ---
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active',
+    t.textContent.toLowerCase().replace(' ', '') === tab));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(tab + '-section').classList.add('active');
+  render();
+}
+
+// --- Rendering ---
+function pill(status) {
+  return '<span class="pill pill-'+status+'"><span class="pill-dot"></span>'+status+'</span>';
+}
+function batteryBar(pct) {
+  const color = pct < 20 ? 'var(--accent)' : pct < 50 ? 'var(--amber)' : 'var(--green)';
+  return '<div class="battery"><div class="battery-bar"><div class="battery-fill" style="width:'+pct+'%;background:'+color+'"></div></div><span class="battery-text">'+Math.round(pct)+'%</span></div>';
+}
+function timeAgo(ts) {
+  const s = Math.round((Date.now() - new Date(ts).getTime()) / 1000);
+  if (s < 60) return s + 's ago';
+  if (s < 3600) return Math.floor(s/60) + 'm ago';
+  return Math.floor(s/3600) + 'h ago';
+}
+
+function renderStats() {
+  const s = data.stats;
+  const avs = s.avs_by_status || {};
+  document.getElementById('stats-row').innerHTML =
+    '<div class="stat"><div class="stat-label">Total AVs</div><div class="stat-value">'+(s.total_avs||0)+'</div><div class="stat-sub">'+(avs.AVAILABLE||0)+' available</div></div>'+
+    '<div class="stat"><div class="stat-label">Active rides</div><div class="stat-value" style="color:var(--blue)">'+(s.active_rides||0)+'</div><div class="stat-sub">Currently matched</div></div>'+
+    '<div class="stat"><div class="stat-label">Match rate</div><div class="stat-value" style="color:var(--green)">'+(s.match_rate||0).toFixed(0)+'%</div><div class="stat-sub">'+(s.total_fares||0)+' total fares</div></div>'+
+    '<div class="stat"><div class="stat-label">WS clients</div><div class="stat-value" style="color:var(--purple)">'+
+      (wsConnected ? '●' : '○')+
+    '</div><div class="stat-sub">'+(wsConnected?'Connected':'Disconnected')+'</div></div>';
+}
+
+function renderFleet() {
+  const avs = data.avs || [];
+  const statusCounts = {};
+  avs.forEach(a => { statusCounts[a.status] = (statusCounts[a.status]||0) + 1; });
+  const allSt = ['ALL','AVAILABLE','EN_ROUTE','IN_PROGRESS','CHARGING','OFFLINE'];
+  document.getElementById('fleet-filters').innerHTML = allSt.map(s => {
+    const count = s === 'ALL' ? avs.length : (statusCounts[s]||0);
+    return '<button class="filter-btn '+(currentFilter===s?'active':'')+'" onclick="currentFilter=\''+s+'\';renderFleet()">'+
+      (s==='ALL'?'All':s)+' ('+count+')</button>';
+  }).join('') + '<input class="search" placeholder="Search ID or model..." value="'+searchText+'" oninput="searchText=this.value;renderFleet()">';
+
+  document.getElementById('fleet-head').innerHTML = '<tr><th>Vehicle ID</th><th>Model</th><th>Status</th><th>Battery</th><th>Location</th><th>Last seen</th></tr>';
+  const filtered = avs
+    .filter(a => currentFilter === 'ALL' || a.status === currentFilter)
+    .filter(a => !searchText || a.id.toLowerCase().includes(searchText.toLowerCase()) || a.model.toLowerCase().includes(searchText.toLowerCase()));
+  document.getElementById('fleet-body').innerHTML = filtered.slice(0, 30).map(a =>
+    '<tr><td class="mono" style="font-weight:600">'+a.id+'</td><td>'+a.model+'</td><td>'+pill(a.status)+'</td>'+
+    '<td>'+batteryBar(a.battery_pct)+'</td><td style="color:var(--muted);font-size:11px">'+a.location.lat.toFixed(4)+', '+a.location.lng.toFixed(4)+'</td>'+
+    '<td style="color:var(--dim);font-size:11px">'+timeAgo(a.last_seen)+'</td></tr>'
+  ).join('') + (filtered.length > 30 ? '<tr><td colspan="6" style="text-align:center;color:var(--muted);font-size:12px">Showing 30 of '+filtered.length+'</td></tr>' : '');
+}
+
+function renderMatching() {
+  const matches = data.matches || [];
+  const counts = { SEARCHING: 0, DONE: 0, FAILED: 0 };
+  matches.forEach(m => { if (counts[m.status] !== undefined) counts[m.status]++; });
+  const colors = { SEARCHING: 'var(--amber)', DONE: 'var(--green)', FAILED: 'var(--accent)' };
+  document.getElementById('match-stats').innerHTML = Object.entries(counts).map(([k, v]) =>
+    '<div class="stat card" style="border-left:3px solid '+colors[k]+';padding:18px 20px">'+
+    '<div class="stat-label">'+k+'</div><div class="stat-value" style="color:'+colors[k]+'">'+v+'</div></div>'
+  ).join('');
+
+  document.getElementById('match-list').innerHTML = matches.length === 0
+    ? '<div style="color:var(--muted);padding:20px;text-align:center">No active matching states</div>'
+    : matches.map(m => {
+      const cells = (m.candidates||[]).map((c, i) => {
+        let cls = '';
+        if (m.status === 'DONE' && i === m.cursor - 1) cls = 'accepted';
+        else if (i < m.cursor) cls = 'tried';
+        else if (i === m.cursor && m.status === 'SEARCHING') cls = 'current';
+        return '<div class="match-cell '+cls+'">'+(cls==='accepted'?'✓':cls==='tried'?'×':'')+'</div>';
+      }).join('');
+      return '<div class="match-row"><span class="mono" style="color:var(--muted);min-width:90px">'+m.ride_id.slice(0,8)+'</span>'+
+        pill(m.status)+'<div class="match-candidates">'+cells+'</div>'+
+        '<span style="margin-left:auto;font-size:11px;color:var(--dim)">cursor: '+m.cursor+'/'+(m.candidates||[]).length+'</span></div>';
+    }).join('');
+
+  const rides = data.rides || [];
+  document.getElementById('rides-body').innerHTML = rides.slice(0, 15).map(r =>
+    '<tr><td class="mono">'+r.id.slice(0,8)+'</td><td>'+pill(r.status)+'</td>'+
+    '<td class="mono" style="color:var(--blue)">'+(r.av_id||'—')+'</td>'+
+    '<td style="color:var(--dim);font-size:11px">'+timeAgo(r.created_at)+'</td></tr>'
+  ).join('');
+}
+
+function renderLiveFeed() {
+  const el = document.getElementById('live-feed');
+  if (feedItems.length === 0) {
+    el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:20px">Waiting for events...</div>';
+    return;
+  }
+  el.innerHTML = feedItems.map(f =>
+    '<div class="feed-item"><span class="feed-time">'+f.time+'</span>'+
+    '<span class="feed-type" style="color:'+f.color+'">'+f.type+'</span>'+
+    '<span>'+f.text+'</span></div>'
+  ).join('');
+
+  document.getElementById('conn-info').innerHTML =
+    '<div style="color:var(--muted)">WebSocket: <span style="color:'+(wsConnected?'var(--green)':'var(--accent)')+'">'+
+    (wsConnected?'Connected':'Disconnected')+'</span></div>'+
+    '<div style="color:var(--muted)">Reconnects: '+wsReconnects+'</div>'+
+    '<div style="color:var(--muted)">Events received: '+feedItems.length+'</div>'+
+    '<div style="color:var(--muted)">Endpoint: <span class="mono">'+WS_URL+'</span></div>';
+
+  document.getElementById('metrics-preview').innerHTML =
+    'robotaxi_http_requests_total<br>'+
+    'robotaxi_rides_requested_total<br>'+
+    'robotaxi_rides_matched_total<br>'+
+    'robotaxi_rides_failed_total<br>'+
+    'robotaxi_match_latency_seconds<br>'+
+    'robotaxi_dispatch_attempts_total<br>'+
+    'robotaxi_dispatch_rejections_total<br>'+
+    'robotaxi_unique_index_violations_total<br>'+
+    'robotaxi_lock_contentions_total<br>'+
+    'robotaxi_location_updates_total<br>'+
+    'robotaxi_ws_connections_active';
+}
+
+async function fetchData() {
+  try {
+    const [statsRes, avsRes, matchRes, ridesRes] = await Promise.all([
+      fetch(API + '/dashboard/stats'),
+      fetch(API + '/avs'),
+      fetch(API + '/matching/states'),
+      fetch(API + '/rides'),
+    ]);
+    data.stats = await statsRes.json();
+    data.avs = await avsRes.json() || [];
+    data.matches = await matchRes.json() || [];
+    data.rides = await ridesRes.json() || [];
+  } catch(e) {}
+  render();
+}
+
+function render() {
+  renderStats();
+  if (currentTab === 'fleet') renderFleet();
+  else if (currentTab === 'matching') renderMatching();
+  else if (currentTab === 'live') renderLiveFeed();
+}
+
+// Boot
+connectWS();
+fetchData();
+setInterval(fetchData, 5000);
+</script>
+</body>
+</html>
