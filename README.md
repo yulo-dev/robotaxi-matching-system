@@ -2,18 +2,6 @@
 
 A production-style ride-matching platform for autonomous vehicles, built with **Go**, **PostgreSQL**, and **Redis**. Implements real-time AV fleet management, distributed matching with consistency guarantees, and a live operations dashboard.
 
-## Screenshots
-
-### Fleet management
-Real-time view of 50 autonomous vehicles with status, battery level, GPS coordinates, and filtering.
-
-![Fleet Dashboard](assets/fleet-dashboard.png)
-
-### Matching monitor
-Live matching pipeline showing Redis state, ride status, and recent ride history.
-
-![Matching Dashboard](assets/matching-dashboard.png)
-
 ## Architecture
 
 ```
@@ -47,6 +35,18 @@ Live matching pipeline showing Redis state, ride status, and recent ride history
 | Prevent 1 ride → multiple AVs assigned | Per-ride Redis lock (`SETNX`) + matching state with cursor |
 | Prevent 1 AV → multiple rides | PostgreSQL partial unique index on `rides(av_id)` |
 | Stateless matching workers | Shared matching state stored in Redis |
+
+## Screenshots
+
+### Fleet management
+Real-time view of 50 autonomous vehicles with status, battery level, GPS coordinates, and filtering.
+
+![Fleet Dashboard](assets/fleet-dashboard.png)
+
+### Matching monitor
+Live matching pipeline showing Redis state, ride status, and recent ride history.
+
+![Matching Dashboard](assets/matching-dashboard.png)
 
 ## Tech Stack
 
