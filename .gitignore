@@ -1,0 +1,26 @@
+.DS_Store
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# Frontend
+node_modules/
+dist/
+build/
+
+# OS / Editor
+.vscode/
+.idea/
+
+# Binaries
+*.exe
+*.out
+*.test
+
+# Go coverage
+coverage.out
