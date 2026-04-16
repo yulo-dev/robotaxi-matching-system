@@ -2,7 +2,7 @@
 
 A production-style ride-matching platform for autonomous vehicles, built with **Go**, **PostgreSQL**, and **Redis**. Implements real-time AV fleet management, distributed matching with consistency guarantees, and a live operations dashboard.
 
-## Architecture
+## Architecture 
 
 ```
 ┌──────────┐    HTTP     ┌──────────────┐     ┌──────────┐
